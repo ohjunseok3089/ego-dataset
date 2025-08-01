@@ -2,7 +2,7 @@
 
 # --- Configuration ---
 BASE_DIR="/mas/robots/prg-egocom/EGOCOM/720p/5min_parts/"
-OUTPUT_DIR="processed_videos"
+OUTPUT_DIR="/mas/robots/prg-egocom/EGOCOM/720p/5min_parts/processed_face_recognition_videos"
 NUM_GPUS=4
 
 # --- Script Start ---
