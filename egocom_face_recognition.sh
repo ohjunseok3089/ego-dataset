@@ -2,7 +2,7 @@
 
 # --- Configuration ---
 BASE_DIR="/mas/robots/prg-egocom/EGOCOM/720p/5min_parts/"
-OUTPUT_DIR="/mas/robots/prg-egocom/EGOCOM/720p/5min_parts/processed_face_recognition_videos"
+OUTPUT_DIR="processed_videos"
 NUM_GPUS=4
 
 # --- Script Start ---
@@ -78,7 +78,8 @@ for ((gpu=0; gpu<NUM_GPUS; gpu++)); do
     echo "#!/bin/bash" > "$temp_script"
     echo "echo '[GPU $gpu] Starting processing... Log file: $log_file'" >> "$temp_script"
     echo "IFS=';' read -ra patterns_to_process <<< \"$job_list\"" >> "$temp_script"
-    echo "for pattern in \"\${patterns_to_process[@]}\"; do" >> "$temp_script
+    # --- FIXED LINE: Added the missing closing double-quote ---
+    echo "for pattern in \"\${patterns_to_process[@]}\"; do" >> "$temp_script"
     echo "    if [ -n \"\$pattern\" ]; then" >> "$temp_script"
     echo "        echo \"[GPU $gpu] --------------------------------------------------\"" >> "$temp_script"
     echo "        echo \"[GPU $gpu] Processing group: \$pattern\"" >> "$temp_script"
