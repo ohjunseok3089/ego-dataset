@@ -4,6 +4,8 @@
 BASE_DIR="/mas/robots/prg-egocom/EGOCOM/720p/5min_parts/"
 OUTPUT_DIR="processed_videos"
 NUM_GPUS=4
+CONDA_ENV_NAME="ego-dataset"
+CUDA_LIB_PATH="/usr/local/cuda-11.8/lib64"
 
 # --- Script Start ---
 echo "Starting Face Recognition Batch Processing..."
@@ -22,21 +24,16 @@ mkdir -p "$OUTPUT_DIR"
 declare -A video_groups
 echo "Grouping video files..."
 
-# Loop through all .MP4 files (case-insensitive)
 for f in "$BASE_DIR"/*.MP4; do
     if [ -f "$f" ]; then
-        # Extract the pattern (e.g., day_1__con_1__person_1) from the filename
         filename=$(basename "$f")
         pattern=$(echo "$filename" | sed -E 's/vid_[0-9]+__(.*)_part[0-9]+\.MP4/\1/')
-        
-        # Add the file to its group
         if [[ -n "$pattern" && "$pattern" != "$filename" ]]; then
             video_groups["$pattern"]+="$f "
         fi
     fi
 done
 
-# Get the list of unique patterns (our job list)
 mapfile -t patterns < <(printf "%s\n" "${!video_groups[@]}" | sort)
 num_groups=${#patterns[@]}
 
@@ -55,7 +52,6 @@ done
 
 for ((i=0; i<num_groups; i++)); do
     gpu_index=$((i % NUM_GPUS))
-    # Add the pattern to the job list for that GPU, using a separator
     gpu_jobs[$gpu_index]+="${patterns[$i]};"
 done
 
@@ -73,12 +69,20 @@ for ((gpu=0; gpu<NUM_GPUS; gpu++)); do
     session_name="face_rec_gpu${gpu}"
     log_file="${session_name}.log"
     
-    # Create a temporary script for the screen session
     temp_script="${session_name}_run.sh"
     echo "#!/bin/bash" > "$temp_script"
     echo "echo '[GPU $gpu] Starting processing... Log file: $log_file'" >> "$temp_script"
+    
+    echo "echo '[GPU $gpu] Activating Conda environment: $CONDA_ENV_NAME'" >> "$temp_script"
+    echo "source \"\$(conda info --base)/etc/profile.d/conda.sh\"" >> "$temp_script"
+    echo "conda activate $CONDA_ENV_NAME" >> "$temp_script"
+
+    # --- Set the CUDA library path ---
+    echo "echo '[GPU $gpu] Setting CUDA library path...'" >> "$temp_script"
+    echo "export LD_LIBRARY_PATH=$CUDA_LIB_PATH:\$LD_LIBRARY_PATH" >> "$temp_script"
+    # -------------------------------------------
+
     echo "IFS=';' read -ra patterns_to_process <<< \"$job_list\"" >> "$temp_script"
-    # --- FIXED LINE: Added the missing closing double-quote ---
     echo "for pattern in \"\${patterns_to_process[@]}\"; do" >> "$temp_script"
     echo "    if [ -n \"\$pattern\" ]; then" >> "$temp_script"
     echo "        echo \"[GPU $gpu] --------------------------------------------------\"" >> "$temp_script"
@@ -93,7 +97,6 @@ for ((gpu=0; gpu<NUM_GPUS; gpu++)); do
     
     chmod +x "$temp_script"
 
-    # Launch the screen session in detached mode
     screen -dmS "$session_name" bash -c "./$temp_script &> $log_file"
     echo "Launched screen session '$session_name' for GPU $gpu. Log: $log_file"
 done
