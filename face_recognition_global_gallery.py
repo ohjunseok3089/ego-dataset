@@ -152,7 +152,7 @@ if __name__ == "__main__":
     parser.add_argument('--pattern_to_match', type=str, required=True, help="Unique pattern to identify a group of videos (e.g., 'day_1__con_1__person_1').")
     parser.add_argument('--output_dir', type=str, default="processed_videos", help="Directory to save output files.")
     parser.add_argument('--min_cluster_size', type=int, default=75, help="Minimum cluster size for HDBSCAN.")
-    parser.add_argument('--recognition_threshold', type=float, default=0.5, help="Cosine distance threshold for recognition.")
+    parser.add_argument('--recognition_threshold', type=float, default=0.8, help="Cosine distance threshold for recognition.")
     parser.add_argument('--execution_provider', type=str, default='CoreMLExecutionProvider', help="Execution provider for ONNX Runtime (e.g., 'CoreMLExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider').")
     
     args = parser.parse_args()
