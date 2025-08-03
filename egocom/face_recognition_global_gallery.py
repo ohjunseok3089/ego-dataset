@@ -83,7 +83,7 @@ def save_outputs(video_path, face_data_for_video, output_dir):
 def main(args):
     print("Initializing InsightFace model...")
     app = FaceAnalysis(name='buffalo_l', providers=[args.execution_provider])
-    app.prepare(ctx_id=0, det_size=(640, 640))
+    app.prepare(ctx_id=0, det_size=(640, 640), det_thresh=0.8)
     
     try:
         search_pattern = os.path.join(args.search_path, '*.MP4')
