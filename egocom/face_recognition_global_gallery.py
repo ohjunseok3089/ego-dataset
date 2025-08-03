@@ -135,10 +135,7 @@ def main(args):
             distances = 1 - np.dot(gallery_embeddings, data['embedding'])
             best_match_index = np.argmin(distances)
             
-            if distances[best_match_index] < args.recognition_threshold:
-                data['person_id'] = gallery_ids[best_match_index]
-            else:
-                data['person_id'] = 'unknown'
+            data['person_id'] = gallery_ids[best_match_index]
         
         save_outputs(video_path, video_data, args.output_dir)
 
