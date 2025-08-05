@@ -44,20 +44,22 @@ def time_to_seconds(time_str):
             return int(time_str)
         except ValueError:
             raise ValueError(f"Invalid time format for: {time_str}")
-
 def split_videos(video_base_path, processing_data, output_folder):
     """
     Splits video files based on the provided data, including categories and frame info in filenames.
-
-    Args:
-        video_base_path (str): The base path where source video files are located.
-        processing_data (dict): A dictionary with video filenames as keys and lists of
-                                time ranges with categories as values.
-        output_folder (str): The path to the directory to save the output clips.
+    Skips files that already exist in the output folder.
     """
     if not os.path.exists(output_folder):
         print(f"Creating output directory: {output_folder}")
         os.makedirs(output_folder)
+
+    print("Scanning for existing files to skip...")
+    try:
+        # Use a set for fast lookups
+        existing_files = set(os.listdir(output_folder))
+        print(f"Found {len(existing_files)} existing files in '{output_folder}'.")
+    except FileNotFoundError:
+        existing_files = set()
 
     for video_file, time_ranges_with_cat in processing_data.items():
         source_video_path = os.path.join(video_base_path, video_file)
@@ -80,36 +82,28 @@ def split_videos(video_base_path, processing_data, output_folder):
 
                 for time_range_str in time_ranges_with_cat:
                     try:
-                        # Parse the string, e.g., "Start ~ 01:04 (social_interaction)"
                         match = re.match(r'(.+?)\s*\((.+)\)', time_range_str)
                         if not match:
                             print(f"    - WARNING: Invalid format for time range string, skipping: '{time_range_str}'")
                             continue
 
                         time_part, category = match.groups()
-                        category = category.strip().replace('manipulcation', 'manipulation') # Correct common typos
+                        category = category.strip().replace('manipulcation', 'manipulation')
 
-                        # Use regex to robustly split time part, handling ~, -, and spaces
                         time_parts = re.split(r'\s*[~-]\s*|\s+', time_part.strip())
                         if len(time_parts) != 2:
-                             # Handle cases like "02:20  03:19 (social_interaction)"
-                             if len(time_parts) > 2 and ':' in time_parts[1]:
-                                 start_time_str = time_parts[0]
-                                 end_time_str = time_parts[1]
-                             else:
+                            if len(time_parts) > 2 and ':' in time_parts[1]:
+                                start_time_str = time_parts[0]
+                                end_time_str = time_parts[1]
+                            else:
                                 print(f"    - WARNING: Could not parse start/end time from '{time_part}', skipping.")
                                 continue
                         else:
                             start_time_str, end_time_str = [t.strip() for t in time_parts]
 
-
-                        # Parse start time
                         start_time_sec = 0 if start_time_str.lower() == 'start' else time_to_seconds(start_time_str)
-                        
-                        # Parse end time
                         end_time_sec = duration if end_time_str.lower() == 'end' else time_to_seconds(end_time_str)
 
-                        # --- Validation ---
                         if start_time_sec >= duration:
                             print(f"  - WARNING: Start time ({start_time_sec:.2f}s) is beyond video duration ({duration:.2f}s). Skipping range '{time_range_str}'.")
                             continue
@@ -120,16 +114,19 @@ def split_videos(video_base_path, processing_data, output_folder):
                             print(f"  - WARNING: Start time ({start_time_sec:.2f}s) is not before end time ({end_time_sec:.2f}s). Skipping range '{time_range_str}'.")
                             continue
 
-                        # --- Calculate Frame Numbers and Create New Filename ---
                         start_frame = int(start_time_sec * fps)
                         end_frame = int(end_time_sec * fps)
 
                         output_filename = f"{base_name}({start_frame}_{end_frame}_{category}){extension}"
+                        
+                        if output_filename in existing_files:
+                            print(f"  - SKIPPING (already exists): {output_filename}")
+                            continue  # Move to the next time range
+
                         output_path = os.path.join(output_folder, output_filename)
 
-                        print(f"  - Creating clip: {output_filename} from {start_time_sec:.2f}s to {end_time_sec:.2f}s")
+                        print(f"  - CREATING clip: {output_filename} from {start_time_sec:.2f}s to {end_time_sec:.2f}s")
 
-                        # Create and write the subclip
                         subclip = clip.subclip(start_time_sec, end_time_sec)
                         subclip.write_videofile(output_path, codec="libx264", audio_codec="aac", logger=None)
 
@@ -142,8 +139,6 @@ def split_videos(video_base_path, processing_data, output_folder):
             continue
 
     print("\nVideo processing complete.")
-
-
 if __name__ == "__main__":
     # Define the base path for source videos and the output directory path
     video_path = "/mas/robots/prg-egocom/EGOCOM/720p/5min_parts/"
